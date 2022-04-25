@@ -26,7 +26,7 @@ enum Commands {
         city: String,
 
         /// Date in Year-Month-Day format
-        #[clap(default_value_t = String::from("NOW"))]
+        #[clap(default_value_t = String::from(weather_mod::CURRENT_DATE_NAME))]
         date: String,
     },
 }

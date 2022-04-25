@@ -15,18 +15,18 @@ pub struct WeatherProviderImpl {
 
 impl WeatherProvider for WeatherProviderImpl {
     fn configure(&self) {
-        println!(
-            "Provide the API key for the {} provider:",
-            self.service_name
-        );
+        println!("Provide the API key for the {} provider:", self.service_name);
 
         let mut api_key = String::new();
 
         loop {
             match io::stdin().read_line(&mut api_key) {
                 Ok(_size) => {
-                    println!("Saving the key '{}' to the settings...", &api_key);
-                    Settings::set(&self.api_key_setting, &api_key);
+                    let trimmed_api_key = api_key.trim().to_string();
+
+                    println!("Saving the key '{}' to the settings...", &trimmed_api_key);
+                    Settings::set(&self.api_key_setting, &trimmed_api_key);
+
                     break;
                 }
                 Err(_error) => {
@@ -42,10 +42,7 @@ impl WeatherProvider for WeatherProviderImpl {
         if let Some(key) = api_key {
             return self.get_weather_impl(city, date, &key);
         } else {
-            println!(
-                "Can't find the API key for {} provider...",
-                self.service_name
-            );
+            println!("Can't find the API key for {} provider...", self.service_name);
 
             self.configure();
 
@@ -69,33 +66,28 @@ impl WeatherProviderImpl {
         result_parser: fn(&String) -> Option<WeatherData>,
     ) -> WeatherProviderImpl {
         WeatherProviderImpl {
-            service_name: service_name,
-            api_key_setting: api_key_setting,
-            url_format: url_format,
-            result_parser: result_parser,
+            service_name,
+            api_key_setting,
+            url_format,
+            result_parser,
         }
     }
 
-    fn get_weather_impl(
-        &self,
-        city: &String,
-        _date: &NaiveDate,
-        api_key: &String,
-    ) -> Option<WeatherData> {
-        let url = self
-            .url_format
-            .replace("{city}", city)
-            .replace("{api_key}", api_key);
+    fn get_weather_impl(&self, city: &String, _date: &NaiveDate, api_key: &String) -> Option<WeatherData> {
+        let url = self.url_format.replace("{city}", city).replace("{api_key}", api_key);
 
         match reqwest::blocking::get(url) {
             Ok(responce) => match responce.text() {
-                Ok(result) => (self.result_parser)(&result),
+                Ok(json) => (self.result_parser)(&json),
                 Err(error) => {
                     println!("{}", error);
                     None
                 }
             },
-            Err(_error) => None,
+            Err(error) => {
+                println!("{}", error);
+                None
+            }
         }
     }
 }

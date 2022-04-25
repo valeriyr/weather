@@ -11,7 +11,7 @@ lazy_static! {
 
             if let Ok(_) = fs::create_dir_all(config_dir) {
                 let mut file_path = config_dir.to_path_buf();
-                file_path.push(SETTINGS_FILE_NAME);
+                file_path.push("settings.json");
 
                 if let Ok(path) = file_path.into_os_string().into_string() {
                     if let Ok(db) = PickleDb::load_json(&path, PickleDbDumpPolicy::AutoDump) {
@@ -26,8 +26,6 @@ lazy_static! {
         RwLock::new(None)
     };
 }
-
-static SETTINGS_FILE_NAME: &str = "settings.json";
 
 pub struct Settings {}
 
