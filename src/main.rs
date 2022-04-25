@@ -1,18 +1,17 @@
 mod weather_mod;
 
-use clap::{Parser, Subcommand, ArgEnum};
+use clap::{ArgEnum, Parser, Subcommand};
 
 /// Could be the best weather provider but just a simple application for the Rust language training...
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
     #[clap(subcommand)]
-    command: Commands
+    command: Commands,
 }
 
 #[derive(Debug, Subcommand)]
-enum Commands
-{
+enum Commands {
     /// Sets configuration from the terminal.
     #[clap(arg_required_else_help = true)]
     Configure {
@@ -23,27 +22,26 @@ enum Commands
     /// Gets weather.
     #[clap(arg_required_else_help = true)]
     Get {
-        /// The city could be detected automaticly if it is possible.
+        /// The city
         city: String,
 
         /// Date in Year-Month-Day format
         #[clap(default_value_t = String::from("NOW"))]
-        date: String
-    }
+        date: String,
+    },
 }
 
 #[derive(Debug, Clone, ArgEnum)]
-enum Provider
-{
+enum Provider {
     OW,
-    WAPI
+    WAPI,
 }
 
 impl From<Provider> for weather_mod::Provider {
     fn from(provider: Provider) -> weather_mod::Provider {
         match provider {
             Provider::OW => weather_mod::Provider::OpenWeather,
-            Provider::WAPI => weather_mod::Provider::WeatherAPI
+            Provider::WAPI => weather_mod::Provider::WeatherAPI,
         }
     }
 }

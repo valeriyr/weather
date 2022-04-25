@@ -1,74 +1,100 @@
 pub mod weather_provider;
 
-mod open_weather;
 mod settings;
-mod weather_api;
+mod weather_provider_impl;
+
+use settings::Settings;
+use weather_provider::WeatherData;
+use weather_provider::WeatherProvider;
+use weather_provider_impl::WeatherProviderImpl;
+
+use chrono::NaiveDate;
+
+use strum_macros::Display;
+use strum_macros::EnumString;
 
 use std::str::FromStr;
 
-use weather_provider::WeatherProvider;
-
-use open_weather::OpenWeather;
-use settings::Settings;
-use weather_api::WeatherAPI;
-
-use chrono::NaiveDate;
-//use ipgeolocate::{Locator, Service};
-//use futures::executor::block_on;
-
-//use std::str::FromStr;
-use strum_macros::EnumString;
-use strum_macros::Display;
-
 #[derive(Display, EnumString)]
-pub enum Provider
-{
+pub enum Provider {
     OpenWeather,
-    WeatherAPI
+    WeatherAPI,
 }
 
 pub struct Weather {
-    provider: Box<dyn WeatherProvider>
+    provider: Box<dyn WeatherProvider>,
 }
 
-static PROVIDER_KEY: &str = "PROVIDER";
+static PROVIDER_KEY: &str = "PROVIDER_KEY";
 
 impl Weather {
     pub fn new() -> Weather {
-        let mut provider = Provider::OpenWeather;
+        let mut provider = None;
 
         if let Some(s) = Settings::get(PROVIDER_KEY) {
             if let Ok(p) = Provider::from_str(&s) {
-                provider = p;
+                println!("The provider '{}' was restored from the settings", p);
+                provider = Some(p);
             }
         }
 
-        Weather { provider : Weather::make_provider(provider) }
+        if let None = provider {
+            provider = Some(Provider::OpenWeather);
+            println!(
+                "The provider can't be restored from the settings. Using the default one '{}'",
+                provider.as_ref().unwrap()
+            );
+        }
+
+        Weather {
+            provider: Weather::make_provider(provider.unwrap()),
+        }
     }
 
     pub fn configure(&mut self, provider: Provider) {
+        println!("Configuration...");
+        println!(
+            "Saving provider '{}' to the settings...",
+            provider.to_string()
+        );
+
+        Settings::set(PROVIDER_KEY, &provider.to_string());
+
         self.provider = Weather::make_provider(provider);
         self.provider.configure();
     }
 
     pub fn get_weather(&self, city: &String, date: &String) {
         match NaiveDate::parse_from_str(&date, "%Y-%m-%d") {
-                Ok(date) => {
-                    match self.provider.get_weather(&city, &date, &String::from("75a6a9a1fa454206804150042222404")) { // 06cf428a8ad911f47b2fb6aa6f94660d
-                        Ok(weather) => println!("Weather: {}", weather),
-                        Err(error) => println!("Weather Error: {}", error)
-                    }
-                },
-                Err(_error) => {
-                    println!("Date can't be parsed. Please, use the format: Year-Month-Day");
-                }
-            };
+            Ok(date) => match self.provider.get_weather(&city, &date) {
+                Some(data) => Weather::print_weather_data(&data),
+                None => (),
+            },
+            Err(_error) => {
+                println!("The date can't be parsed. Please, use the format: Year-Month-Day");
+            }
+        };
     }
 
     fn make_provider(p: Provider) -> Box<dyn WeatherProvider> {
         match p {
-            Provider::OpenWeather => Box::new(OpenWeather{}),
-            Provider::WeatherAPI => Box::new(WeatherAPI{})
+            Provider::OpenWeather => Box::new(WeatherProviderImpl::new(
+                "Open Weather",
+                "OPEN_WEATHER_API_KEY",
+                "https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}",
+                |_data: &String| -> Option<WeatherData> { Some(WeatherData{ temperature: String::from("1") }) },
+            )),
+            Provider::WeatherAPI => Box::new(WeatherProviderImpl::new(
+                "Weather API",
+                "WEATHER_API_API_KEY",
+                "https://api.weatherapi.com/v1/current.json?key={api_key}&q={city}&aqi=no",
+                |_data: &String| -> Option<WeatherData> { Some(WeatherData{ temperature: String::from("2") })
+                },
+            )),
         }
+    }
+
+    fn print_weather_data(data: &WeatherData) {
+        println!("Temperature: {}", data.temperature);
     }
 }
