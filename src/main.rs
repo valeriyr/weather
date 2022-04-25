@@ -1,4 +1,5 @@
-use chrono::{NaiveDate};
+mod weather_mod;
+
 use clap::{Parser, Subcommand, ArgEnum};
 
 /// Could be the best weather provider but just a simple application for the Rust language training...
@@ -17,39 +18,47 @@ enum Commands
     Configure {
         /// Provider
         #[clap(arg_enum)]
-        provider: Proveder,
+        provider: Provider,
     },
+    /// Gets weather.
     #[clap(arg_required_else_help = true)]
     Get {
-        /// Address
-        address: String,
+        /// The city could be detected automaticly if it is possible.
+        city: String,
 
-        // Date in Year-Month-Day format
+        /// Date in Year-Month-Day format
         #[clap(default_value_t = String::from("NOW"))]
         date: String
     }
 }
 
 #[derive(Debug, Clone, ArgEnum)]
-enum Proveder
+enum Provider
 {
-    Provider1,
-    Provider2
+    OW,
+    WAPI
+}
+
+impl From<Provider> for weather_mod::Provider {
+    fn from(provider: Provider) -> weather_mod::Provider {
+        match provider {
+            Provider::OW => weather_mod::Provider::OpenWeather,
+            Provider::WAPI => weather_mod::Provider::WeatherAPI
+        }
+    }
 }
 
 fn main() {
     let args = Args::parse();
 
+    let mut weather = weather_mod::Weather::new();
+
     match args.command {
         Commands::Configure { provider } => {
-            println!("Configuring {:?}", provider);
+            weather.configure(weather_mod::Provider::from(provider));
         }
-        Commands::Get { address, date } => {
-            println!("Getting {}, {}", address, date);
-
-            let dt1 = NaiveDate::parse_from_str(&date, "%Y-%m-%d");
-
-            println!("{:?}", dt1);
+        Commands::Get { city, date } => {
+            weather.get_weather(&city, &date);
         }
     }
 }
