@@ -14,7 +14,7 @@ impl fmt::Display for WeatherData {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
             formatter,
-            "The temperature in {} is {}, feels like {}, pressure {}, wind {}, humidity {}",
+            "Info: The temperature in {} is {} but feels like {}, pressure {}, wind {}, humidity {}.",
             self.location,
             self.temperature,
             self.feelslike,
@@ -26,6 +26,8 @@ impl fmt::Display for WeatherData {
 }
 
 pub trait WeatherProvider {
+    fn is_configured(&self) -> bool;
     fn configure(&self);
-    fn get_weather(&self, city: &String, date: &NaiveDate) -> Option<WeatherData>;
+
+    fn get_weather(&self, city: &str, date: &NaiveDate) -> Option<WeatherData>;
 }

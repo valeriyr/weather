@@ -14,8 +14,12 @@ pub struct WeatherProviderImpl {
 }
 
 impl WeatherProvider for WeatherProviderImpl {
+    fn is_configured(&self) -> bool {
+        Settings::exists(self.api_key_setting)
+    }
+
     fn configure(&self) {
-        println!("Provide the API key for the {} provider:", self.service_name);
+        println!("Info: Provide the API key for the {} provider:", self.service_name);
 
         let mut api_key = String::new();
 
@@ -24,36 +28,48 @@ impl WeatherProvider for WeatherProviderImpl {
                 Ok(_size) => {
                     let trimmed_api_key = api_key.trim().to_string();
 
-                    println!("Saving the key '{}' to the settings...", &trimmed_api_key);
-                    Settings::set(&self.api_key_setting, &trimmed_api_key);
+                    println!("Info: Saving the key '{}' to the settings...", &trimmed_api_key);
+                    Settings::set(self.api_key_setting, &trimmed_api_key);
 
                     break;
                 }
                 Err(_error) => {
-                    println!("Something went wrong, try one more time");
+                    println!("Error: Something went wrong. Please, try one more time.");
                 }
             }
         }
     }
 
-    fn get_weather(&self, city: &String, date: &NaiveDate) -> Option<WeatherData> {
-        let mut api_key = Settings::get(&self.api_key_setting);
+    fn get_weather(&self, city: &str, _date: &NaiveDate) -> Option<WeatherData> {
+        let api_key = Settings::get(self.api_key_setting);
 
         if let Some(key) = api_key {
-            return self.get_weather_impl(city, date, &key);
-        } else {
-            println!("Can't find the API key for {} provider...", self.service_name);
+            let url = self.url_format.replace("{city}", city).replace("{api_key}", &key);
 
-            self.configure();
+            match reqwest::blocking::get(url) {
+                Ok(responce) => match responce.text() {
+                    Ok(json) => {
+                        let data = (self.result_parser)(&json);
 
-            api_key = Settings::get(&self.api_key_setting);
+                        if data.is_none() {
+                            println!("Error: The request result from the '{}' provider can't be parsed.", self.service_name);
+                        }
 
-            if let Some(key) = api_key {
-                return self.get_weather_impl(city, date, &key);
-            } else {
-                println!("Something went wrong...");
-                None
+                        data
+                    },
+                    Err(_error) => {
+                        println!("Error: Can't get responce from the '{}' provider.", self.service_name);
+                        None
+                    }
+                },
+                Err(_error) => {
+                    println!("Error: The '{}' provider is unavailable, try again later or configure it.", self.service_name);
+                    None
+                }
             }
+        } else {
+            println!("Error: Can't find the API key for '{}' provider.", self.service_name);
+            None
         }
     }
 }
@@ -70,24 +86,6 @@ impl WeatherProviderImpl {
             api_key_setting,
             url_format,
             result_parser,
-        }
-    }
-
-    fn get_weather_impl(&self, city: &String, _date: &NaiveDate, api_key: &String) -> Option<WeatherData> {
-        let url = self.url_format.replace("{city}", city).replace("{api_key}", api_key);
-
-        match reqwest::blocking::get(url) {
-            Ok(responce) => match responce.text() {
-                Ok(json) => (self.result_parser)(&json),
-                Err(error) => {
-                    println!("{}", error);
-                    None
-                }
-            },
-            Err(error) => {
-                println!("{}", error);
-                None
-            }
         }
     }
 }

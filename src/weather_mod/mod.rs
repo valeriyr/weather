@@ -19,7 +19,7 @@ use strum_macros::EnumString;
 
 use std::str::FromStr;
 
-#[derive(Display, EnumString)]
+#[derive(Display, Clone, Copy, EnumString)]
 pub enum Provider {
     OpenWeather,
     WeatherAPI,
@@ -30,31 +30,36 @@ pub struct Weather {
 }
 
 static PROVIDER_KEY: &str = "PROVIDER_KEY";
+static DEFAULT_PROVIDER: Provider = Provider::OpenWeather;
 
 pub static CURRENT_DATE_NAME: &str = "NOW";
 
 impl Weather {
     pub fn new() -> Weather {
+        println!("Info: Initialization...");
+
         let mut provider = None;
 
         if let Some(s) = Settings::get(PROVIDER_KEY) {
             if let Ok(p) = Provider::from_str(&s) {
-                println!("The provider '{}' was restored from the settings", p);
+                println!("Info: The provider '{p}' was restored from the settings.");
                 provider = Some(p);
             }
         }
 
-        if let None = provider {
-            provider = Some(Provider::OpenWeather);
-            println!("The provider can't be restored from the settings. Using the default one '{}'", provider.as_ref().unwrap());
+        if provider.is_none() {
+            provider = Some(DEFAULT_PROVIDER);
+            println!("Info: The provider can't be restored from the settings. Using the default one '{DEFAULT_PROVIDER}'.");
+
+            Settings::set(PROVIDER_KEY, &DEFAULT_PROVIDER.to_string());
         }
 
         Weather{ provider: Weather::make_provider(provider.unwrap()) }
     }
 
     pub fn configure(&mut self, provider: Provider) {
-        println!("Configuration...");
-        println!("Saving provider '{}' to the settings...", provider.to_string());
+        println!("Info: Configuration...");
+        println!("Info: Saving the provider '{provider}' to the settings...");
 
         Settings::set(PROVIDER_KEY, &provider.to_string());
 
@@ -62,24 +67,31 @@ impl Weather {
         self.provider.configure();
     }
 
-    pub fn get_weather(&self, city: &String, date: &String) {
+    pub fn get_weather(&self, city: &str, date: &String) {
+        if !self.provider.is_configured() {
+            println!("Info: The provider need to be configured.");
+            self.provider.configure();
+        }
+
+        println!("Info: Getting data...");
+
         let final_date;
 
         if date == CURRENT_DATE_NAME {
             final_date = Local::now().naive_local().date();
         }
         else {
-            match NaiveDate::parse_from_str(&date, "%Y-%m-%d") {
+            match NaiveDate::parse_from_str(date, "%Y-%m-%d") {
                 Ok(date) => final_date = date,
                 Err(_error) => {
-                    println!("The date can't be parsed. Please, use the format: Year-Month-Day");
+                    println!("Error: The date can't be parsed. Please, use the format: Year-Month-Day.");
                     return;
                 }
             };
         }
 
-        match self.provider.get_weather(&city, &final_date) {
-            Some(data) => Weather::print_weather_data(&data),
+        match self.provider.get_weather(city, &final_date) {
+            Some(data) => println!("{}", data),
             None => (),
         }
     }
@@ -121,9 +133,5 @@ impl Weather {
                 },
             )),
         }
-    }
-
-    fn print_weather_data(data: &WeatherData) {
-        println!("{}", data);
     }
 }

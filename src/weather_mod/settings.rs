@@ -9,7 +9,7 @@ lazy_static! {
         if let Some(proj_dirs) = ProjectDirs::from("com", "reutov", "weather") {
             let config_dir = proj_dirs.config_dir();
 
-            if let Ok(_) = fs::create_dir_all(config_dir) {
+            if fs::create_dir_all(config_dir).is_ok() {
                 let mut file_path = config_dir.to_path_buf();
                 file_path.push("settings.json");
 
@@ -30,6 +30,16 @@ lazy_static! {
 pub struct Settings {}
 
 impl Settings {
+    pub fn exists(key: &str) -> bool {
+        if let Ok(lock) = SETTINGS.read() {
+            if let Some(db) = lock.as_ref() {
+                return db.exists(key);
+            }
+        }
+
+        false
+    }
+
     pub fn get(key: &str) -> Option<String> {
         if let Ok(lock) = SETTINGS.read() {
             if let Some(db) = lock.as_ref() {

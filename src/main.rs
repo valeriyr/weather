@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 mod weather_mod;
 
 use clap::{ArgEnum, Parser, Subcommand};
@@ -34,14 +36,14 @@ enum Commands {
 #[derive(Debug, Clone, ArgEnum)]
 enum Provider {
     OW,
-    WAPI,
+    Wapi,
 }
 
 impl From<Provider> for weather_mod::Provider {
     fn from(provider: Provider) -> weather_mod::Provider {
         match provider {
             Provider::OW => weather_mod::Provider::OpenWeather,
-            Provider::WAPI => weather_mod::Provider::WeatherAPI,
+            Provider::Wapi => weather_mod::Provider::WeatherAPI,
         }
     }
 }
