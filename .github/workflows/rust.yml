@@ -16,8 +16,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Build
+    - name: Echo
       run: echo "ref_name=${{ github.ref_name }}"
+    - name: Build
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
